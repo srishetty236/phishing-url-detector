@@ -3,4 +3,5 @@ numpy
 flask
 gunicorn
 uvicorn
+fastapi
 
