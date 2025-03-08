@@ -1,25 +1,20 @@
-from flask import Flask, request, jsonify
 import pickle
-import pandas as pd
+import zlib
+import numpy as np
+from fastapi import FastAPI
+from pydantic import BaseModel
 
-app = Flask(__name__)
+app = FastAPI()
 
-# Load the trained model
-model = pickle.load(open("malicious_url_model.pkl", "rb"))
+# Load model
+with open("malicious_url_model_compressed.pkl", "rb") as file:
+    model = pickle.loads(zlib.decompress(file.read()))
 
-@app.route("/")
-def home():
-    return "🚀 Malicious URL Detection API is running!"
+class FeaturesInput(BaseModel):
+    features: str  # Example: "3,0,0,1,0,0,0,0,0,0,1,2,0,892,0,0,0,0,0,0"
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    data = request.get_json()  # Get JSON input
-    df = pd.DataFrame([data])  # Convert JSON to DataFrame
-
-    prediction = model.predict(df)[0]  # Make prediction
-    result = "Malicious" if prediction == 1 else "Benign"
-
-    return jsonify({"prediction": result})
-
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.post("/predict")
+def predict_url(data: FeaturesInput):
+    features = np.array([list(map(float, data.features.split(",")))])
+    prediction = model.predict(features)
+    return {"result": "Malicious URL" if prediction[0] == 1 else "Benign URL"}
